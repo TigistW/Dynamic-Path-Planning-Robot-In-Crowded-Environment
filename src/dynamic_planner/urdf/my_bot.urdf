@@ -90,7 +90,7 @@
     <parent link="base_link"/>
     <child link="left_wheel"/>
     <!-- Position and Orientation -->
-    <origin xyz="0 -0.2 0.05" rpy="1.5708 0 0"/> <!-- 90-degree rotation -->
+    <origin xyz="0 -0.2 -0.1" rpy="1.5708 0 0"/> <!-- 90-degree rotation -->
     <axis xyz="0 0 1"/> <!-- Rotates around the Y-axis -->
   </joint>
 
@@ -99,7 +99,7 @@
     <parent link="base_link"/>
     <child link="right_wheel"/>
     <!-- Position and Orientation -->
-    <origin xyz="0 0.2 0.05" rpy="1.5708 0 0"/> <!-- 90-degree rotation -->
+    <origin xyz="0 0.2 -0.1" rpy="1.5708 0 0"/> <!-- 90-degree rotation -->
     <axis xyz="0 0 1"/> <!-- Rotates around the Y-axis -->
   </joint>
 
