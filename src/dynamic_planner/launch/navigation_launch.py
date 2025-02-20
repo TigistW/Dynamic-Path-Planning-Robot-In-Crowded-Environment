@@ -13,7 +13,7 @@ def generate_launch_description():
     pkg_share = get_package_share_directory(package_name)
     urdf_file = os.path.join(pkg_share, 'urdf', 'my_bot.urdf')
     world_file = os.path.join(pkg_share, 'worlds', 'map.world')
-    nav2_params_file = os.path.join(pkg_share, 'config', 'nav2_params.yaml')
+    #nav2_params_file = os.path.join(pkg_share, 'config', 'nav2_params.yaml')
 
     # Launch Gazebo
     gazebo = IncludeLaunchDescription(

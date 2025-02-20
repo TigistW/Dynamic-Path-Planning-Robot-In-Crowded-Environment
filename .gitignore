@@ -2,3 +2,4 @@
 **/install
 **/log
 /src/navigation2
+**/__pycache__
