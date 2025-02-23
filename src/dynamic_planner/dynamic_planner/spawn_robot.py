@@ -44,8 +44,8 @@ class SpawnRobot(Node):
         request = SpawnEntity.Request()
         request.xml = robot_description
         request.name = 'simple_robot'
-        request.initial_pose.position.x = 0.0
-        request.initial_pose.position.y = 0.0
+        request.initial_pose.position.x = 2.0
+        request.initial_pose.position.y = 3.0
         request.initial_pose.position.z = 0.1
         request.initial_pose.orientation.w = 1.0
 

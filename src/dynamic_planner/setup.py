@@ -28,7 +28,8 @@ setup(
         'console_scripts': [
             'camera_subscriber = dynamic_planner.camera_subscriber:main',
             'spawn_robot = dynamic_planner.spawn_robot:main',
-            'dwa_controller = dynamic_planner.dwa_controller:main'
+            'dwa_controller = dynamic_planner.dwa_controller:main',
+            'auto_move = dynamic_planner.auto_move:main',
         ],
     },
 )

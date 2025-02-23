@@ -26,7 +26,7 @@ def generate_launch_description():
     spawn_robot = Node(
         package='gazebo_ros',
         executable='spawn_entity.py',
-        arguments=['-entity', 'simple_robot', '-file', urdf_file, '-x', '0.0', '-y', '0.0', '-z', '0.1'],
+        arguments=['-entity', 'simple_robot', '-file', urdf_file, '-x', '2.0', '-y', '3.0', '-z', '0.1'],
         output='screen'
     )
 
@@ -36,6 +36,12 @@ def generate_launch_description():
         executable='dwa_controller',
         output='screen'
     )
+    auto_move = Node(
+        package='dynamic_planner',
+        executable='auto_move',
+        output='screen'
+    )
+
 
     # Start the Camera Subscriber Node
     camera_subscriber = Node(
@@ -49,4 +55,5 @@ def generate_launch_description():
         spawn_robot,
         dwa_controller,
         camera_subscriber,  # Added Camera Subscriber Node
+        auto_move
     ])
