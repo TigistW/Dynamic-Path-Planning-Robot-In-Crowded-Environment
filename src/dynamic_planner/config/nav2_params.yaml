@@ -1,0 +1,62 @@
+# Disable map_server completely
+map_server:
+  ros__parameters:
+    use_sim_time: True
+    yaml_filename: ""  # ✅ Fully disables map loading
+
+# Disable AMCL (only needed for global localization)
+amcl:
+  ros__parameters:
+    use_sim_time: True
+    map_topic: ""
+    scan_topic: "/scan"
+    enabled: False  # ✅ Fully disables AMCL
+
+# Disable planner server if only local navigation is needed
+planner_server:
+  ros__parameters:
+    use_sim_time: True
+    enabled: False  # ✅ Fully disables global planning
+
+# Disable behavior tree navigator
+bt_navigator:
+  ros__parameters:
+    use_sim_time: True
+    enabled: False  # ✅ Fully disables behavior tree navigation
+
+# Keep only the controller (DWA)
+controller_server:
+  ros__parameters:
+    use_sim_time: True
+    controller_plugins: ["FollowPath"]
+
+    progress_checker_plugin: "nav2_controller::SimpleProgressChecker"
+    goal_checker_plugin: "nav2_controller::SimpleGoalChecker"
+
+    FollowPath:
+      plugin: "dwb_core::DWBLocalPlanner"
+      min_vel_x: 0.1
+      max_vel_x: 0.5
+      min_rot_vel: 0.2
+      max_rot_vel: 1.0
+      acc_lim_x: 2.5
+      acc_lim_theta: 3.2
+      xy_goal_tolerance: 0.2
+      yaw_goal_tolerance: 0.1
+      trans_stopped_velocity: 0.1
+      rot_stopped_velocity: 0.1
+
+      vx_samples: 10
+      vtheta_samples: 20
+      sim_time: 1.5
+      controller_frequency: 10.0
+
+      critics: ["ObstacleFootprint", "PathAlign", "PathDist", "GoalAlign"]
+      ObstacleFootprint:
+        scale: 0.02
+      PathAlign:
+        scale: 32.0
+      PathDist:
+        scale: 32.0
+      GoalAlign:
+        scale: 24.0

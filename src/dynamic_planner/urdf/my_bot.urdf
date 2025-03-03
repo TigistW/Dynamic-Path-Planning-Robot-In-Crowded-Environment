@@ -1,0 +1,219 @@
+<?xml version="1.0"?>
+<robot name="simple_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Base Link -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.4 0.4 0.2"/> <!-- Dimensions: 40cm x 40cm x 20cm -->
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 1 1"/> <!-- Blue Color -->
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.4 0.4 0.2"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+  </link>
+
+  <!-- Left Wheel -->
+  <link name="left_wheel">
+    <visual>
+      <geometry>
+        <cylinder length="0.05" radius="0.1"/> <!-- Wheel radius: 10cm -->
+      </geometry>
+      <material name="black">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.05" radius="0.1"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <!-- Right Wheel -->
+  <link name="right_wheel">
+    <visual>
+      <geometry>
+        <cylinder length="0.05" radius="0.1"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.05" radius="0.1"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+    </inertial>
+  </link>
+  <link name="front_wheel">
+    <visual>
+      <geometry>
+        <cylinder length="0.05" radius="0.1"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.05" radius="0.1"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <!-- Back Wheel -->
+  <link name="back_wheel">
+    <visual>
+      <geometry>
+        <cylinder length="0.05" radius="0.1"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.05" radius="0.1"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+    </inertial>
+  </link>
+
+   <gazebo>
+  <plugin name="diff_drive_controller" filename="libgazebo_ros_diff_drive.so">
+    <ros>
+      <namespace>/</namespace>
+      <remapping>cmd_vel:=/cmd_vel</remapping>
+      <remapping>odom:=/odom</remapping>
+    </ros>
+    <update_rate>100.0</update_rate>
+    <left_joint>left_wheel_joint</left_joint>
+    <right_joint>right_wheel_joint</right_joint>
+    <wheel_separation>0.4</wheel_separation> <!-- Distance between left & right wheels -->
+    <wheel_radius>0.1</wheel_radius> <!-- Each wheel has 10cm radius -->
+    <wheel_diameter>0.2</wheel_diameter>  <!-- 2x wheel radius -->
+    <odom_source>world</odom_source>
+  </plugin>
+</gazebo>
+
+  <!-- Lidar -->
+  <link name="lidar">
+    <visual>
+      <geometry>
+        <cylinder length="0.05" radius="0.05"/> <!-- Lidar radius: 5cm -->
+      </geometry>
+      <material name="red">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.05" radius="0.05"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Joints -->
+  <!-- Left Wheel Joint -->
+  <joint name="left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="left_wheel"/>
+    <!-- Position and Orientation -->
+    <origin xyz="0 -0.2 -0.1" rpy="1.5708 0 0"/> <!-- 90-degree rotation -->
+    <axis xyz="0 0 1"/> <!-- Rotates around the Y-axis -->
+  </joint>
+
+  <!-- Right Wheel Joint -->
+  <joint name="right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="right_wheel"/>
+    <!-- Position and Orientation -->
+    <origin xyz="0 0.2 -0.1" rpy="1.5708 0 0"/> <!-- 90-degree rotation -->
+    <axis xyz="0 0 1"/> <!-- Rotates around the Y-axis -->
+  </joint>
+  <joint name="front_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="front_wheel"/>
+    <origin xyz="0.2 0 -0.1" rpy="1.5708 0 0"/> <!-- Positioned to the front -->
+    <axis xyz="0 0 1"/> <!-- Rotates around Z-axis -->
+  </joint>
+
+  <!-- Back Wheel Joint -->
+  <joint name="back_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="back_wheel"/>
+    <origin xyz="-0.2 0 -0.1" rpy="1.5708 0 0"/> <!-- Positioned to the back -->
+    <axis xyz="0 0 1"/> <!-- Rotates around Z-axis -->
+  </joint>
+
+  <!-- Lidar Joint -->
+  <joint name="lidar_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="lidar"/>
+    <origin xyz="0 0 0.15" rpy="0 0 0"/> <!-- Lidar mounted above the base -->
+  </joint>
+  
+  <gazebo reference="lidar">
+  <sensor type="ray" name="lidar">
+    <update_rate>10</update_rate>
+    <ray>
+      <scan>
+        <horizontal>
+          <samples>360</samples>
+          <resolution>1.0</resolution>
+          <min_angle>-1.57</min_angle>
+          <max_angle>1.57</max_angle>
+        </horizontal>
+      </scan>
+      <range>
+        <min>0.1</min>
+        <max>10.0</max>
+        <resolution>0.01</resolution>
+      </range>
+    </ray>
+  </sensor>
+</gazebo>
+
+
+  <gazebo reference="left_wheel">
+    <mu>0.1</mu>
+    <mu2>0.1</mu2>
+  </gazebo>
+
+<gazebo reference="right_wheel">
+    <mu>0.1</mu>
+    <mu2>0.1</mu2>
+</gazebo>
+
+
+</robot>
