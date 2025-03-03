@@ -1,129 +1,135 @@
-import numpy as np
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import Twist, PoseStamped
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
-
-class RobotConfig:
-    def __init__(self):
-        # Velocity limits
-        self.max_linear_velocity = 0.5  # m/s
-        self.max_angular_velocity = 1.0  # rad/s
-        self.acceleration_limit = 0.2  # m/s²
-        self.angular_acceleration_limit = 0.5  # rad/s²
-        self.dt = 0.1  # Time step for trajectory prediction
-        self.predict_time = 2.0  # Time horizon for trajectory evaluation
-        self.obstacle_radius = 0.3  # Distance around obstacle considered unsafe
-
-
-import math
-
-class DWAPlanner:
-    def __init__(self, config):
-        self.config = config
-
-    def compute_trajectory_cost(self, velocities, goal, robot_pose, obstacles):
-        """
-        Compute cost for a trajectory given a velocity sample.
-        """
-        x, y, theta = robot_pose
-        v, w = velocities
-
-        trajectory_cost = 0.0
-        for t in np.arange(0, self.config.predict_time, self.config.dt):
-            # Simulate robot position
-            x += v * math.cos(theta) * self.config.dt
-            y += v * math.sin(theta) * self.config.dt
-            theta += w * self.config.dt
-
-            # Goal distance cost
-            distance_to_goal = math.hypot(goal[0] - x, goal[1] - y)
-
-            # Obstacle distance cost
-            min_obstacle_dist = min(
-                [math.hypot(x - obs[0], y - obs[1]) for obs in obstacles]
-            ) if obstacles else float('inf')
-
-            # Penalize collision
-            if min_obstacle_dist < self.config.obstacle_radius:
-                return float('inf')
-
-            trajectory_cost += distance_to_goal + (1.0 / min_obstacle_dist)
-
-        return trajectory_cost
-
-    def sample_velocities(self):
-        """
-        Generate velocity samples within dynamic constraints.
-        """
-        v_samples = np.arange(-self.config.max_linear_velocity,
-                               self.config.max_linear_velocity, 0.05)
-        w_samples = np.arange(-self.config.max_angular_velocity,
-                               self.config.max_angular_velocity, 0.1)
-        return [(v, w) for v in v_samples for w in w_samples]
-
-    def plan(self, current_pose, goal_pose, obstacles):
-        """
-        Plan the best velocity using DWA.
-        """
-        best_cost = float('inf')
-        best_velocity = (0, 0)
-        for v_sample in self.sample_velocities():
-            cost = self.compute_trajectory_cost(v_sample, goal_pose, current_pose, obstacles)
-            if cost < best_cost:
-                best_cost = cost
-                best_velocity = v_sample
-
-        return best_velocity
-
+import numpy as np
 
 class DWAController(Node):
     def __init__(self):
         super().__init__('dwa_controller')
-        self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.pose_subscriber = self.create_subscription(PoseStamped, '/goal_pose', self.goal_callback, 10)
-        self.scan_subscriber = self.create_subscription(LaserScan, '/scan', self.lidar_callback, 10)
-        self.current_pose = (0.0, 0.0, 0.0)
-        self.goal_pose = (1.0, 1.0)
-        self.obstacles = []
-        self.dwa_planner = DWAPlanner(RobotConfig())
 
-    def goal_callback(self, msg):
-        self.goal_pose = (msg.pose.position.x, msg.pose.position.y)
-        self.get_logger().info(f"New goal received: {self.goal_pose}")
+        # Publishers & Subscribers
+        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+        self.scan_sub = self.create_subscription(LaserScan, '/scan', self.scan_callback, 10)
+        self.angle_min = 0.0  # Will be updated in scan_callback
+        self.angle_increment = 0.0 
 
-    def lidar_callback(self, msg):
-        # Convert scan to obstacle positions
-        self.obstacles = self.process_lidar(msg)
+        # Robot parameters
+        self.max_speed = 0.5  # m/s
+        self.max_turn_rate = 1.0  # rad/s
+        self.dt = 0.1  # Time step for velocity simulation
+        self.obstacle_threshold = 0.5  # m (min distance to obstacles)
 
-    def process_lidar(self, scan_data):
-        """Process lidar data and return obstacle coordinates."""
-        obstacles = []
-        angle = scan_data.angle_min
-        for distance in scan_data.ranges:
-            if distance < scan_data.range_max:
-                x = distance * math.cos(angle)
-                y = distance * math.sin(angle)
-                obstacles.append((x, y))
-            angle += scan_data.angle_increment
-        return obstacles
+        self.goal = np.array([3.0, 2.0])  # Target position
+        self.position = np.array([0.0, 0.0])  # Current position
+        self.yaw = 0.0  # Robot heading
+        self.lidar_ranges = None  # LiDAR scan data
 
-    def control_loop(self):
-        velocity = self.dwa_planner.plan(self.current_pose, self.goal_pose, self.obstacles)
-        self.publish_velocity(velocity)
+        # Timer to periodically run the DWA control loop
+        self.create_timer(0.1, self.dwa_control)
 
-    def publish_velocity(self, velocity):
-        v, w = velocity
+        self.get_logger().info("DWA Controller Node Started!")
+
+    def odom_callback(self, msg):
+        """Update robot position and orientation from odometry."""
+        self.position = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y])
+        orientation = msg.pose.pose.orientation
+        self.yaw = np.arctan2(2.0 * (orientation.w * orientation.z + orientation.x * orientation.y),
+                              1.0 - 2.0 * (orientation.y**2 + orientation.z**2))
+
+    def scan_callback(self, msg):
+        """ Store latest LiDAR scan data and detect obstacles. """
+        if len(msg.ranges) == 0:
+            self.get_logger().warn("Received empty LiDAR scan!")
+            return
+
+        self.lidar_ranges = np.array(msg.ranges)  # Store LiDAR ranges
+
+       
+        front_distances = self.lidar_ranges[np.r_[:30, -30:]]
+        self.min_front_distance = np.min(front_distances) if len(front_distances) > 0 else float('inf')
+
+        self.get_logger().info(f"Closest obstacle in front: {self.min_front_distance:.2f} meters")
+
+
+
+    def dwa_control(self):
+        """Main DWA algorithm: selects the best velocity for navigation."""
+        if self.lidar_ranges is None:
+            self.get_logger().warn("Waiting for LiDAR data...")
+            return
+
+        # Generate velocity samples
+        velocities = np.linspace(-self.max_speed, self.max_speed, 5)
+        angular_velocities = np.linspace(-self.max_turn_rate, self.max_turn_rate, 5)
+
+        best_v = 0.0
+        best_w = 0.0
+        best_score = -np.inf
+
+        for v in velocities:
+            for w in angular_velocities:
+                trajectory = self.simulate_trajectory(v, w)
+
+                # Evaluate trajectory score components
+                clearance = self.compute_clearance(trajectory)
+                goal_score = self.compute_goal_score(trajectory[-1])
+                speed_score = v  # Prefer higher speeds
+
+                total_score = clearance * 1.5 + goal_score * 2.0 + speed_score
+
+                if total_score > best_score:
+                    best_score = total_score
+                    best_v = v
+                    best_w = w
+
+        # Publish best velocity command
         twist_msg = Twist()
-        twist_msg.linear.x = v
-        twist_msg.angular.z = w
-        self.publisher_.publish(twist_msg)
+        twist_msg.linear.x = best_v
+        twist_msg.angular.z = best_w
+        self.get_logger().info(f"Evaluating v={best_v:.2f}, w={best_w:.2f}, Score={best_score:.2f}")
+        self.cmd_vel_pub.publish(twist_msg)
+        self.get_logger().info(f"Publishing Velocities: v={best_v:.2f}, w={best_w:.2f}")
+
+    def simulate_trajectory(self, v, w):
+        """Simulate the trajectory for given velocity inputs."""
+        x, y, theta = self.position[0], self.position[1], self.yaw
+        trajectory = []
+
+        for _ in range(10):  # Simulate over a short horizon
+            x += v * np.cos(theta) * self.dt
+            y += v * np.sin(theta) * self.dt
+            theta += w * self.dt
+            trajectory.append((x, y))
+
+        return np.array(trajectory)
+
+    def compute_clearance(self, trajectory):
+        """Compute clearance (distance to nearest obstacle along trajectory)."""
+        min_distance = np.inf
+        for x, y in trajectory:
+            # Use the index to compute the correct angle for each LiDAR range value
+            for i, lidar_range in enumerate(self.lidar_ranges):
+                if lidar_range < self.obstacle_threshold:
+                    actual_angle = self.angle_min + i * self.angle_increment
+                    obs_x = self.position[0] + lidar_range * np.cos(actual_angle)
+                    obs_y = self.position[1] + lidar_range * np.sin(actual_angle)
+                    distance = np.linalg.norm([x - obs_x, y - obs_y])
+                    min_distance = min(min_distance, distance)
+        return min_distance
+
+    def compute_goal_score(self, last_position):
+        """Compute score based on how close the trajectory gets to the goal."""
+        distance_to_goal = np.linalg.norm(self.goal - last_position)
+        return 1.0 / (distance_to_goal + 1e-6)  # Avoid division by zero
 
 def main(args=None):
     rclpy.init(args=args)
-    controller = DWAController()
-    rclpy.spin(controller)
-    controller.destroy_node()
+    node = DWAController()
+    rclpy.spin(node)
+    node.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':

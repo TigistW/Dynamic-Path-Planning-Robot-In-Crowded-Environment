@@ -12,7 +12,7 @@ class CameraSubscriber(Node):
             10)
 
     def image_callback(self, msg):
-        self.get_logger().info('Received an image!')
+        self.get_logger().info(f'Received a {msg}!')
 
 def main(args=None):
     rclpy.init(args=args)
